@@ -10,7 +10,8 @@ final class PomodoroTimer {
     enum Phase {
         case work, rest
 
-        var duration: TimeInterval { self == .work ? 25 * 60 : 5 * 60 }
+        // タイマー時間設定(test用)
+        var duration: TimeInterval { self == .work ? 0.25 * 60 : 0.5 * 60 }
         var next: Phase { self == .work ? .rest : .work }
         var label: String { self == .work ? "集中" : "休憩" }
     }
@@ -55,7 +56,7 @@ final class PomodoroTimer {
         ticker = nil
         endDate = nil
         cancelNotification()
-        WKInterfaceDevice.current().play(.stop)
+        WKInterfaceDevice.current().play(.click)
     }
 
     private func tick() {
