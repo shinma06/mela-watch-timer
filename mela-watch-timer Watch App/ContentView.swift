@@ -8,47 +8,42 @@ struct ContentView: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
-            phaseLabel
-            progressRing
-            controls
-        }
-        .padding(.horizontal, 6)
-        .onAppear { pomodoro.refreshIfNeeded() }
-    }
+        GeometryReader { geo in
+            let diameter = min(geo.size.width, geo.size.height) - 6
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.12), lineWidth: 10)
 
-    private var phaseLabel: some View {
-        Text(pomodoro.phase.label)
-            .font(.caption2)
-            .fontWeight(.semibold)
-            .foregroundStyle(accentColor)
-            .animation(.easeInOut(duration: 0.3), value: pomodoro.phase == .work)
-    }
+                Circle()
+                    .trim(from: 0, to: pomodoro.progress)
+                    .stroke(
+                        accentColor,
+                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 1), value: pomodoro.progress)
 
-    private var progressRing: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.1), lineWidth: 7)
+                VStack(spacing: 4) {
+                    Text(pomodoro.phase.label)
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(accentColor)
+                        .animation(.easeInOut(duration: 0.3), value: pomodoro.phase == .work)
 
-            Circle()
-                .trim(from: 0, to: pomodoro.progress)
-                .stroke(
-                    accentColor,
-                    style: StrokeStyle(lineWidth: 7, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .animation(.linear(duration: 1), value: pomodoro.progress)
+                    Text(timeString(pomodoro.remaining))
+                        .font(.system(size: 30, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
 
-            VStack(spacing: 2) {
-                Text(timeString(pomodoro.remaining))
-                    .font(.system(size: 32, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
+                    sessionDots
 
-                sessionDots
+                    controls
+                }
             }
+            .frame(width: diameter, height: diameter)
+            .position(x: geo.size.width / 2, y: geo.size.height / 2)
         }
-        .frame(width: 130, height: 130)
+        .onAppear { pomodoro.refreshIfNeeded() }
     }
 
     private var sessionDots: some View {
@@ -65,25 +60,25 @@ struct ContentView: View {
     }
 
     private var controls: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 10) {
             Button(action: { pomodoro.toggle() }) {
                 Image(systemName: pomodoro.isRunning ? "pause.fill" : "play.fill")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.black)
             }
             .buttonStyle(.plain)
-            .frame(width: 48, height: 48)
+            .frame(width: 40, height: 40)
             .background(accentColor)
             .clipShape(Circle())
             .animation(.easeInOut(duration: 0.2), value: pomodoro.isRunning)
 
             Button(action: { pomodoro.skip() }) {
                 Image(systemName: "forward.end.fill")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
             }
             .buttonStyle(.plain)
-            .frame(width: 38, height: 38)
+            .frame(width: 32, height: 32)
             .background(Color.white.opacity(0.15))
             .clipShape(Circle())
         }
