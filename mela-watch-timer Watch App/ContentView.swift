@@ -36,15 +36,15 @@ private struct ProgressRingView: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.12), lineWidth: 10)
+                .stroke(Color.white.opacity(0.12), lineWidth: 5)
             Circle()
                 .trim(from: 0, to: pomodoro.progress)
                 .stroke(
                     pomodoro.phase.accentColor,
-                    style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 5, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .animation(pomodoro.progress == 0 ? .none : .linear(duration: 1), value: pomodoro.progress)
+                .animation(pomodoro.progress == 1 ? .none : .linear(duration: 1), value: pomodoro.progress)
         }
     }
 }

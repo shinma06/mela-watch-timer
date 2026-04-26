@@ -24,7 +24,7 @@ final class PomodoroTimer {
     private var ticker: Timer?
 
     var progress: Double {
-        max(0, min(1, 1.0 - remaining / phase.duration))
+        max(0, min(1, remaining / phase.duration))
     }
 
     func toggle() {
