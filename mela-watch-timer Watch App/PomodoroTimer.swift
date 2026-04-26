@@ -86,7 +86,8 @@ final class PomodoroTimer {
 
     private func startTicker() {
         let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.tick() }
+            // RunLoop.main 上で動作するためメインスレッドが保証済み
+            MainActor.assumeIsolated { self?.tick() }
         }
         RunLoop.main.add(t, forMode: .common)
         ticker = t
