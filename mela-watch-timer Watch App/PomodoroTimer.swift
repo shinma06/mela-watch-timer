@@ -10,15 +10,14 @@ final class PomodoroTimer {
     enum Phase {
         case work, rest
 
-        // タイマー時間設定(test用)
-        var duration: TimeInterval { self == .work ? 0.25 * 60 : 0.5 * 60 }
+        var duration: TimeInterval { self == .work ? 25 * 60 : 5 * 60 }
         var next: Phase { self == .work ? .rest : .work }
         var label: String { self == .work ? "集中" : "休憩" }
     }
 
     private(set) var phase: Phase = .work
     private(set) var isRunning = false
-    private(set) var remaining: TimeInterval = 25 * 60
+    private(set) var remaining: TimeInterval = Phase.work.duration
     private(set) var completedPomodoros = 0
 
     private var endDate: Date?

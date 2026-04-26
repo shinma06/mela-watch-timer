@@ -44,7 +44,7 @@ private struct ProgressRingView: View {
                     style: StrokeStyle(lineWidth: 10, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .animation(.linear(duration: 1), value: pomodoro.progress)
+                .animation(pomodoro.progress == 0 ? .none : .linear(duration: 1), value: pomodoro.progress)
         }
     }
 }
