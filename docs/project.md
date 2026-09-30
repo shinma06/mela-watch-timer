@@ -4,7 +4,7 @@
 
 | 項目 | 現在の値 |
 | --- | --- |
-| 目的 | Apple Watch用の25分集中・5分休憩タイマー |
+| 目的 | minee 4の体験をApple Watchで模倣する。[目的・参照製品の正本](../CLAUDE.md#目的と参照製品) |
 | 対象 | watchOS 26.4以上、SwiftUI、Observation、UserNotifications、WatchKit |
 | Swift | `project.pbxproj`の言語モードは5.0。Swift compilerの版と混同しない |
 | source | `mela-watch-timer Watch App/`。Xcodeのfile-system synchronized group |
