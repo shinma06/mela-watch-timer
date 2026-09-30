@@ -1,6 +1,6 @@
 # mela-watch-timer
 
-Apple Watch用のポモドーロタイマー。25分の集中と5分の休憩を切り替えます。
+[minee 4](https://mineetimer.com/ja/products/minee-4)の体験をApple Watchで模倣するプロジェクトです。現在は25分の集中と5分の休憩を切り替えるタイマーを実装しています。目的と参照製品のナレッジは[CLAUDE.md](CLAUDE.md#目的と参照製品)にまとめています。
 
 - [仕様・開発上の注意](CLAUDE.md)
 - [構成・ビルド・検証](docs/project.md)
