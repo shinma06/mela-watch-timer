@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.DS_Store
+.harness-local/
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+.codex/config.toml
+.mcp.json
+.cursor/mcp.json
+
+# Xcode local state and build products
+DerivedData/
+build/
+xcuserdata/
+*.xcuserstate
