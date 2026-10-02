@@ -108,8 +108,12 @@ private struct ControlsView: View {
                 Text(model.status)
                 if model.isLoaded {
                     TimelineView(.animation(minimumInterval: 1, paused: model.snapshot.timer.mode != .running || !model.isActive)) { _ in
-                        Text(TimerModel.displayTime(model.remaining)).monospacedDigit()
-                            .accessibilityLabel("残り" + TimerModel.spokenTime(model.remaining))
+                        if model.snapshot.timer.mode == .ready {
+                            Text("\(model.snapshot.timer.phase.label) \(Int(model.duration / 60))分")
+                        } else {
+                            Text(TimerModel.displayTime(model.remaining)).monospacedDigit()
+                                .accessibilityLabel("残り" + TimerModel.spokenTime(model.remaining))
+                        }
                     }
                 }
                 if let error = model.storageError {
@@ -255,7 +259,8 @@ private struct RecordsView: View {
             if days.allSatisfy({ $0.count == 0 }) { Text("完了した集中がここに記録されます") }
             ForEach(days) { day in
                 VStack(alignment: .leading) {
-                    Text(day.date, format: .dateTime.month().day())
+                    if Calendar.current.isDateInToday(day.date) { Text("今日") }
+                    else { Text(day.date, format: .dateTime.month().day()) }
                     Text("\(day.count)回・\(duration(day.duration))")
                 }.accessibilityElement(children: .combine)
             }

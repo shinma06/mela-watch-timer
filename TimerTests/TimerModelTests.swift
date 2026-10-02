@@ -608,4 +608,22 @@ actor TestNotifications {
         #expect(f.model.snapshot.focusRecords.count == 1)
     }
 
+    @Test func A10_reopenedControlsAreNotDismissedBySlowAdd() async throws {
+        var snapshot = TimerSnapshot()
+        snapshot.settings.onboardingCompleted = true
+        let alerts = TestNotifications()
+        await alerts.configure(holding: true)
+        let f = Fixture(snapshot: snapshot, alerts: alerts)
+        await f.load()
+        await f.model.send(.start())
+        await alerts.waitForAdd()
+        let intent = try #require(f.model.snapshot.notificationIntent)
+        f.model.closeControls()
+        f.model.openControls()
+        await alerts.finish(intent.token)
+        await f.model.notifications.waitForIdle()
+        await Task.yield()
+        #expect(f.model.route == .controls)
+    }
+
 }

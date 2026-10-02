@@ -76,12 +76,12 @@ final class TimerModel {
         completionTask?.cancel()
         completionTask = nil
         if active {
-            routeOnActivation = returningFromBackground
+            routeOnActivation = routeOnActivation || returningFromBackground
             Task { [weak self] in await self?.send(.refresh(.activation)) }
         }
     }
 
-    func openControls() { route = isLoaded && !snapshot.settings.onboardingCompleted ? .onboarding : .controls }
+    func openControls() { cancelAutomaticDismissal(); route = isLoaded && !snapshot.settings.onboardingCompleted ? .onboarding : .controls }
     func closeControls() { route = .dial; startNotice = false }
     func showOnboarding() { cancelAutomaticDismissal(); route = .onboarding }
     func cancelAutomaticDismissal() { startPresentationTask?.cancel() }
