@@ -1,128 +1,281 @@
 import SwiftUI
 
-extension PomodoroTimer.Phase {
-    var accentColor: Color { self == .work ? .orange : .mint }
-}
-
 struct ContentView: View {
-    @State private var pomodoro = PomodoroTimer()
+    let model: TimerModel
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.isLuminanceReduced) private var luminanceReduced
+    @State private var wasBackground = false
 
     var body: some View {
-        // このbodyはpomodoroのいかなるプロパティも直接参照しないため
-        // 毎秒の再描画対象から外れる
-        GeometryReader { geo in
-            let size = min(geo.size.width, geo.size.height) - 6
-            ZStack {
-                ProgressRingView(pomodoro: pomodoro)
-                VStack(spacing: 4) {
-                    PhaseLabelView(pomodoro: pomodoro)
-                    TimerTextView(pomodoro: pomodoro)
-                    SessionDotsView(pomodoro: pomodoro)
-                    ControlsView(pomodoro: pomodoro)
-                }
-            }
-            .frame(width: size, height: size)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        TimelineView(.animation(minimumInterval: 1,
+                                paused: model.snapshot.timer.mode != .running || (!model.isActive && !luminanceReduced))) { _ in
+            DialFace(phase: model.snapshot.timer.phase, ratio: model.remainingRatio, dimmed: luminanceReduced)
+                .contentShape(Rectangle())
+                .onTapGesture { model.openControls() }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(model.accessibilitySummary)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { model.openControls() }
         }
         .ignoresSafeArea()
-        .onAppear { pomodoro.refreshIfNeeded() }
+        .sheet(isPresented: Binding(get: { model.route != .dial }, set: { if !$0 { model.closeControls() } })) {
+            NavigationStack {
+                if model.route == .onboarding { OnboardingView(model: model) }
+                else { ControlsView(model: model) }
+            }
+            .id(model.navigationResetID)
+            .alert("終了のお知らせ", isPresented: Binding(get: { model.permissionPrompt != nil }, set: { _ in })) {
+                Button("通知を使う") { model.answerPermission(.allow) }
+                Button("今は使わない") { model.answerPermission(.withoutNotifications) }
+                Button("取消", role: .cancel) { model.cancelPermissionPrompt() }
+            } message: { Text("画面を閉じても区切りを知らせるため、通知を使います。音と振動はWatchの設定に従います。") }
+        }
+        .task { await model.send(.load) }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            if phase == .background { wasBackground = true }
+            model.setActive(phase == .active, returningFromBackground: phase == .active && wasBackground)
+            if phase == .active { wasBackground = false }
+        }
     }
 }
 
-// remaining と phase を観測 — 毎秒再描画
-private struct ProgressRingView: View {
-    let pomodoro: PomodoroTimer
+struct DialFace: View {
+    let phase: TimerPhase
+    let ratio: Double
+    let dimmed: Bool
+
+    private var red: Color { dimmed ? Color(red: 169 / 255, green: 65 / 255, blue: 62 / 255) : Color(red: 242 / 255, green: 95 / 255, blue: 92 / 255) }
+    private var blue: Color { dimmed ? Color(red: 7 / 255, green: 16 / 255, blue: 31 / 255) : Color(red: 22 / 255, green: 58 / 255, blue: 112 / 255) }
 
     var body: some View {
         ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.12), lineWidth: 5)
-            Circle()
-                .trim(from: 0, to: pomodoro.progress)
-                .stroke(
-                    pomodoro.phase.accentColor,
-                    style: StrokeStyle(lineWidth: 5, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .animation(pomodoro.progress == 1 ? .none : .linear(duration: 1), value: pomodoro.progress)
+            phase == .focus ? blue : red
+            RemainingSector(ratio: ratio).fill(phase == .focus ? red : blue)
+        }
+        .clipped()
+    }
+}
+
+nonisolated struct RemainingSector: Shape {
+    var ratio: Double
+
+    func path(in rect: CGRect) -> Path {
+        let geometry = DialGeometry(width: rect.width, height: rect.height, ratio: ratio)
+        guard geometry.clampedRatio > 0 else { return Path() }
+        if geometry.clampedRatio >= 1 { return Path(rect) }
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        var path = Path()
+        path.move(to: center)
+        path.addArc(center: center, radius: geometry.radius,
+                    startAngle: .radians(geometry.elapsedAngle - .pi / 2),
+                    endAngle: .radians(3 * .pi / 2), clockwise: false)
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct OnboardingView: View {
+    let model: TimerModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("mela").font(.title2)
+                Text("赤は集中、青は休憩")
+                Text("色が減ると残り時間も減る")
+                Text("画面をタップすると操作できます")
+                if let error = model.storageError { Text(error) }
+                Button("始める") { Task { await model.send(.finishOnboarding) } }
+                    .frame(minHeight: 44)
+                    .disabled(model.isBusy)
+            }.padding()
         }
     }
 }
 
-// phase のみ観測 — フェーズ切り替え時のみ再描画
-private struct PhaseLabelView: View {
-    let pomodoro: PomodoroTimer
-
-    var body: some View {
-        Text(pomodoro.phase.label)
-            .font(.caption2)
-            .fontWeight(.semibold)
-            .foregroundStyle(pomodoro.phase.accentColor)
-            .animation(.easeInOut(duration: 0.3), value: pomodoro.phase == .work)
-    }
-}
-
-// remaining のみ観測 — 毎秒再描画
-private struct TimerTextView: View {
-    let pomodoro: PomodoroTimer
-
-    var body: some View {
-        let total = max(0, Int(pomodoro.remaining.rounded(.up)))
-        Text(String(format: "%02d:%02d", total / 60, total % 60))
-            .font(.system(size: 30, weight: .semibold, design: .rounded))
-            .monospacedDigit()
-            .foregroundStyle(.white)
-    }
-}
-
-// completedPomodoros のみ観測 — セッション完了時のみ再描画
-private struct SessionDotsView: View {
-    let pomodoro: PomodoroTimer
-
-    var body: some View {
-        let count = min(pomodoro.completedPomodoros, 8)
-        HStack(spacing: 3) {
-            ForEach(0..<count, id: \.self) { _ in
-                Circle()
-                    .fill(Color.orange)
-                    .frame(width: 4, height: 4)
-            }
-        }
-        .frame(height: 8)
-        .animation(.spring, value: pomodoro.completedPomodoros)
-    }
-}
-
-// isRunning と phase を観測 — ボタン状態変化時のみ再描画
 private struct ControlsView: View {
-    let pomodoro: PomodoroTimer
+    let model: TimerModel
+    private struct DiscardConfirmation {
+        var sessionID: UUID
+        var switchPhase: Bool
+    }
+    @State private var discardConfirmation: DiscardConfirmation?
+    @State private var confirmInitialization = false
 
     var body: some View {
-        HStack(spacing: 10) {
-            Button { pomodoro.toggle() } label: {
-                Image(systemName: pomodoro.isRunning ? "pause.fill" : "play.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.black)
+        ScrollView {
+            VStack(spacing: 12) {
+                Text(model.snapshot.timer.phase.label).font(.title2)
+                Text(model.status)
+                if model.isLoaded {
+                    TimelineView(.animation(minimumInterval: 1, paused: model.snapshot.timer.mode != .running || !model.isActive)) { _ in
+                        if model.snapshot.timer.mode == .ready {
+                            Text("\(model.snapshot.timer.phase.label) \(Int(model.duration / 60))分")
+                        } else {
+                            Text(TimerModel.displayTime(model.remaining)).monospacedDigit()
+                                .accessibilityLabel("残り" + TimerModel.spokenTime(model.remaining))
+                        }
+                    }
+                }
+                if let error = model.storageError {
+                    Text(error)
+                    Button("再試行") { run(model.isLoaded ? .refresh(.retry) : .load) }
+                    if !model.isLoaded {
+                        Button("保存データを初期化", role: .destructive) { confirmInitialization = true }
+                    }
+                }
+                if model.isLoaded && !model.completionPending {
+                    Button(primaryTitle) {
+                        switch model.snapshot.timer.mode {
+                        case .ready: run(.start())
+                        case .paused: run(.resume())
+                        case .running:
+                            if let id = model.snapshot.timer.session?.id { run(.pause(id)) }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(model.storageError != nil && model.snapshot.timer.mode != .running)
+                    if model.snapshot.timer.mode != .ready {
+                        Button("この回をやり直す") { confirmDiscard(switchPhase: false) }
+                    }
+                    Button(model.snapshot.timer.phase.next.label + "に切り替える") {
+                        if model.snapshot.timer.mode == .ready { run(.discard(nil, switchPhase: true)) }
+                        else { confirmDiscard(switchPhase: true) }
+                    }
+                    Text(model.notifications.message).font(.footnote)
+                    if model.startNotice {
+                        Button("このまま使う") { model.closeControls() }
+                    }
+                    if model.notifications.permissionRequestFailed || isNotificationFailed {
+                        Button("お知らせを再試行") { run(.notifications(true, .allow)) }
+                    }
+                    NavigationLink("設定") { SettingsView(model: model) }
+                    NavigationLink("記録") { RecordsView(model: model) }
+                }
+                Button("閉じる") { model.closeControls() }
             }
-            .buttonStyle(.plain)
-            .frame(width: 40, height: 40)
-            .background(pomodoro.phase.accentColor)
-            .clipShape(Circle())
-            .animation(.easeInOut(duration: 0.2), value: pomodoro.isRunning)
-
-            Button { pomodoro.skip() } label: {
-                Image(systemName: "forward.end.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
-            .buttonStyle(.plain)
-            .frame(width: 32, height: 32)
-            .background(Color.white.opacity(0.15))
-            .clipShape(Circle())
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
+            .disabled(model.isBusy)
+            .padding(.horizontal)
         }
+        .navigationTitle("操作")
+        .alert("この回の途中経過は記録されません", isPresented: Binding(
+            get: { discardConfirmation != nil }, set: { if !$0 { discardConfirmation = nil } })) {
+                Button("取消", role: .cancel) { discardConfirmation = nil }
+                Button(discardConfirmation?.switchPhase == true ? "切り替える" : "やり直す", role: .destructive) {
+                    guard let confirmation = discardConfirmation else { return }
+                    run(.discard(confirmation.sessionID, switchPhase: confirmation.switchPhase))
+                    discardConfirmation = nil
+                }
+        }
+        .onChange(of: model.snapshot.timer.session?.id) { _, id in
+            if discardConfirmation?.sessionID != id { discardConfirmation = nil }
+        }
+        .alert("保存データを初期化しますか", isPresented: $confirmInitialization) {
+            Button("取消", role: .cancel) {}
+            Button("初期化", role: .destructive) { run(.initializeConfirmed) }
+        } message: { Text("設定と記録を新しく作成します。元のデータは保存できる場合に端末内へ退避します。") }
+
+    }
+
+    private var primaryTitle: String {
+        switch model.snapshot.timer.mode {
+        case .ready: model.snapshot.timer.phase.label + "を開始"
+        case .running: "一時停止"
+        case .paused: "再開"
+        }
+    }
+    private var isNotificationFailed: Bool { if case .failed = model.notifications.state { true } else { false } }
+    private func confirmDiscard(switchPhase: Bool) {
+        guard let id = model.snapshot.timer.session?.id else { return }
+        discardConfirmation = DiscardConfirmation(sessionID: id, switchPhase: switchPhase)
+    }
+    private func run(_ command: TimerCommand) { Task { await model.send(command) } }
+}
+
+private struct SettingsView: View {
+    let model: TimerModel
+    @State private var confirmDelete = false
+
+    var body: some View {
+        Form {
+            NavigationLink("時間の設定") { DurationSettingsView(model: model) }
+            Text("時間の変更は次の回から反映されます").font(.footnote)
+            Toggle("終了のお知らせ", isOn: Binding(get: { model.snapshot.settings.notificationsEnabled }, set: {
+                value in Task { await model.send(.notifications(value)) }
+            }))
+            Text(model.notifications.message).font(.footnote)
+            Text("通知の許可と音・振動は、WatchまたはiPhoneの通知設定を確認してください。").font(.footnote)
+            Toggle("操作時の触覚", isOn: Binding(get: { model.snapshot.settings.operationHapticsEnabled }, set: {
+                value in Task { await model.send(.haptics(value)) }
+            }))
+            Button("使い方") { model.showOnboarding() }
+            Button("記録を削除", role: .destructive) { confirmDelete = true }
+            if let error = model.storageError { Text(error) }
+        }
+        .disabled(model.isBusy)
+        .navigationTitle("設定")
+        .onAppear { model.cancelAutomaticDismissal() }
+        .alert("記録をすべて削除しますか", isPresented: $confirmDelete) {
+            Button("取消", role: .cancel) {}
+            Button("削除", role: .destructive) { Task { await model.send(.deleteRecords) } }
+        } message: { Text("現在のタイマーと設定は残ります。") }
+    }
+}
+
+private struct DurationSettingsView: View {
+    let model: TimerModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var focus: Int
+    @State private var rest: Int
+
+    init(model: TimerModel) {
+        self.model = model
+        _focus = State(initialValue: model.snapshot.settings.focusMinutes)
+        _rest = State(initialValue: model.snapshot.settings.restMinutes)
+    }
+
+    var body: some View {
+        Form {
+            Picker("集中", selection: $focus) { ForEach(1...120, id: \.self) { Text("\($0)分").tag($0) } }
+            Picker("休憩", selection: $rest) { ForEach(1...60, id: \.self) { Text("\($0)分").tag($0) } }
+            Text("時間の変更は次の回から反映されます").font(.footnote)
+            Button("保存") { Task { if await model.send(.durations(focus: focus, rest: rest)) { dismiss() } } }
+            Button("取消", role: .cancel) { dismiss() }
+            if let error = model.storageError { Text(error) }
+        }
+        .disabled(model.isBusy)
+        .navigationTitle("時間")
+    }
+}
+
+private struct RecordsView: View {
+    let model: TimerModel
+
+    var body: some View {
+        List {
+            Text("完了した集中").font(.headline)
+            let days = model.snapshot.dailyFocus(at: Date())
+            if days.allSatisfy({ $0.count == 0 }) { Text("完了した集中がここに記録されます") }
+            ForEach(days) { day in
+                VStack(alignment: .leading) {
+                    if Calendar.current.isDateInToday(day.date) { Text("今日") }
+                    else { Text(day.date, format: .dateTime.month().day()) }
+                    Text("\(day.count)回・\(duration(day.duration))")
+                }.accessibilityElement(children: .combine)
+            }
+        }
+        .navigationTitle("記録")
+        .onAppear { model.cancelAutomaticDismissal() }
+    }
+
+    private func duration(_ seconds: TimeInterval) -> String {
+        let minutes = Int(seconds / 60)
+        return minutes >= 60 ? "\(minutes / 60)時間\(minutes % 60)分" : "\(minutes)分"
     }
 }
 
 #Preview {
-    ContentView()
+    DialFace(phase: .focus, ratio: 0.75, dimmed: false).ignoresSafeArea()
 }

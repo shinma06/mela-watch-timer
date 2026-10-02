@@ -4,64 +4,28 @@
 
 ## 目的と参照製品
 
-- 目的はminee 4をApple Watchで模倣すること（2026-09-30、ユーザーが明示）。機能・UIを検討するときの参照製品とする。
-- [公式製品ページ](https://mineetimer.com/ja/products/minee-4)では、数字や目盛りに頼らない円形の残り時間表示、集中・休憩時間のカスタマイズ、セッションの自動記録・アプリ連携が紹介されている（同日確認）。
-- 2026-10-02、ユーザーが「全表示領域を青・赤だけで使う」「円の中心をWatch画面の中心に合わせる」「中心に特別なUIを置かない」「古いアプリを再構築する」と指定。新しい実装の正本は[プロダクト要件](docs/requirements.md)、[技術設計](docs/timer-design.md)、[受入条件](docs/timer-acceptance.md)。
-- 下記の25分/5分固定や数値カウントダウンは現行実装の説明であり、再構築の制約ではない。新仕様は未実装で、参照製品の全機能を実装済み・実装必須とは扱わない。
+- 目的はminee 4をApple Watchで模倣すること（2026-09-30、ユーザーが明示）。機能・UIの参照製品とする。
+- 2026-10-02、ユーザーは「全表示領域を青・赤だけで使う」「円の中心をWatch画面の中心に合わせる」「中心に特別なUIを置かない」「古いアプリを再構築する」と指定した。
+- 正本は[プロダクト要件](docs/requirements.md)、[技術設計](docs/timer-design.md)、[受入条件](docs/timer-acceptance.md)。参照製品の全機能を必須とは扱わない。
 
-## 現行実装の概要
+## 現行実装
 
-25分の集中セッションと5分の休憩セッションをループするポモドーロタイマー。
-バックグラウンド中はローカル通知でタイマー完了を通知する。
+- Watch-only、watchOS 26.4以上、Swift 6モード、SwiftUIとObservation。Android/MVVMは前提にしない。
+- 全画面の赤・青で残りを表示。タップで操作sheetを開く。初回案内、時間設定、通知・触覚設定、7日分の集中記録を持つ。
+- 集中1〜120分、休憩1〜60分。初期値25分／5分。完了・やり直し・切替後の次の開始は手動。
+- Appが1つの `@MainActor @Observable TimerModel` を所有する。観測プロパティは `private(set)`、変更はモデルのコマンド経由。
+- 同じプロセスではContinuousClock、再起動時は保存期限を使用。TimelineViewは描画のみで、bodyから保存・通知・完了処理を行わない。
+- StateStore actorが単一snapshotをatomic保存。保存成功後に状態・通知・操作の触覚を確定する。
+- 通知はUserNotificationsで予約し、sessionID/tokenを照合する。許可やaddのエラーを隠さない。遅いaddはcaptured IDだけを補償削除する。
+- 旧PomodoroTimer、中央の数字・ボタン・ドット、リング、毎秒Timerは除去済み。
 
-## 技術スタック
+## ビルド・検証
 
-- **プラットフォーム**: watchOS 26.4+
-- **言語**: Swift（プロジェクトの言語モードは `SWIFT_VERSION = 5.0`）
-- **UI フレームワーク**: SwiftUI
-- **状態管理**: `@Observable` (Swift Observation フレームワーク)
-- **通知**: `UserNotifications` (バックグラウンド完了通知)
-- **触覚フィードバック**: `WKInterfaceDevice`
+`mela-watch-timer.xcodeproj` の共有scheme `mela-watch-timer Watch App` を使う。Swift Testingの `TimerTests` を含む実行コマンドとsource配置は[プロジェクト情報](docs/project.md)を参照。
 
-## アーキテクチャ
-
-```
-mela-watch-timer Watch App/
-├── mela_watch_timerApp.swift   # エントリーポイント、通知権限リクエスト
-├── PomodoroTimer.swift          # タイマーモデル (@Observable)
-├── ContentView.swift            # メイン UI
-└── Assets.xcassets/
-```
-
-ロジックとUIを分離するシンプルな単層アーキテクチャ。`PomodoroTimer` にタイマー状態と操作を集約する。SwiftUI Viewには依存しないが、通知とWatchKitの触覚フィードバックを扱う。
-
-## タイマー仕様
-
-- **集中フェーズ**: 25分（`work`）
-- **休憩フェーズ**: 5分（`rest`）
-- **フェーズ順**: work → rest → work → rest ...。完了・スキップ後は停止し、次のフェーズは手動で開始する
-- **完了カウント**: 集中セッション完了数をリング内ドットで表示（最大8個）
-
-## バックグラウンド対応
-
-タイマー開始時に `UNUserNotificationCenter` でローカル通知をスケジュール。
-アプリ復帰時に `endDate` から残り時間を再計算して UI を最新状態に同期する。
-
-## ビルド・実行
-
-```bash
-# Xcode で開く
-open mela-watch-timer.xcodeproj
-```
-
-Apple Watch 実機または watchOS Simulator を選択してビルド・実行。
-
-## 開発上の注意
-
-- watchOS シミュレーターでは触覚フィードバック (`WKInterfaceDevice.play`) は動作しない
-- ローカル通知の動作確認は実機推奨
-- `@Observable` の観測対象プロパティは `private(set)` を使い、変更はモデルメソッド経由に限定する
-- タイマーの `Timer` は `RunLoop.main` + `.common` モードで登録してスクロール中も確実に発火させる
+- Debug/Release buildとA01〜A20の実コード試験を行い、Swift concurrency診断を確認する。
+- Simulatorでは通知・触覚・Always Onの実機合格を証明できない。実機・利用体験の未完了条件は[Issue #8](https://github.com/shinma06/mela-watch-timer/issues/8)で追跡する。
+- 追加依存・通信・アカウントなし。bundle ID、署名、ハーネスとGit保護を再構築の対象として削除しない。
 
 # Shared agent contract
 
