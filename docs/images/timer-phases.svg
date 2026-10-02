@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="664" viewBox="0 0 1120 664" role="img" aria-labelledby="title desc">
+<title id="title">mela タイマーの進行見本</title>
+<desc id="desc">上段は集中、下段は休憩。残り100、75、50、25、0パーセント。12時から時計回りに現在フェーズの色が減り、次のフェーズの色に変わる。ラベルは画面外の説明で、タイマー面には文字も中心の部品もない。</desc>
+<rect width="1120" height="664" fill="#F6F4EF"/>
+<g font-family="-apple-system, BlinkMacSystemFont, sans-serif" fill="#20252B">
+<text x="32" y="42" font-size="24" font-weight="600">mela · 2色タイマーの進行</text>
+<text x="32" y="69" font-size="14">文字は説明用です。Watchのタイマー面には表示しません。</text>
+<text x="32" y="104" font-size="18" font-weight="600">集中</text>
+<defs><clipPath id="clip0-0"><rect width="172" height="204" rx="33"/></clipPath></defs>
+<g transform="translate(40,119)" clip-path="url(#clip0-0)">
+<rect width="172" height="204" fill="#163A70"/>
+<rect width="172" height="204" fill="#F25F5C"/>
+</g>
+<text x="126.0" y="349" text-anchor="middle" font-size="16">残り 100%</text>
+<defs><clipPath id="clip0-1"><rect width="172" height="204" rx="33"/></clipPath></defs>
+<g transform="translate(256,119)" clip-path="url(#clip0-1)">
+<rect width="172" height="204" fill="#163A70"/>
+<path fill="#F25F5C" d="M 86.0 102.0 L 220.416641 102.000000 A 134.416641 134.416641 0 1 1 86.000000 -32.416641 Z"/>
+</g>
+<text x="342.0" y="349" text-anchor="middle" font-size="16">残り 75%</text>
+<defs><clipPath id="clip0-2"><rect width="172" height="204" rx="33"/></clipPath></defs>
+<g transform="translate(472,119)" clip-path="url(#clip0-2)">
+<rect width="172" height="204" fill="#163A70"/>
+<path fill="#F25F5C" d="M 86.0 102.0 L 86.000000 236.416641 A 134.416641 134.416641 0 0 1 86.000000 -32.416641 Z"/>
+</g>
+<text x="558.0" y="349" text-anchor="middle" font-size="16">残り 50%</text>
+<defs><clipPath id="clip0-3"><rect width="172" height="204" rx="33"/></clipPath></defs>
+<g transform="translate(688,119)" clip-path="url(#clip0-3)">
+<rect width="172" height="204" fill="#163A70"/>
+<path fill="#F25F5C" d="M 86.0 102.0 L -48.416641 102.000000 A 134.416641 134.416641 0 0 1 86.000000 -32.416641 Z"/>
+</g>
+<text x="774.0" y="349" text-anchor="middle" font-size="16">残り 25%</text>
+<defs><clipPath id="clip0-4"><rect width="172" height="204" rx="33"/></clipPath></defs>
+<g transform="translate(904,119)" clip-path="url(#clip0-4)">
+<rect width="172" height="204" fill="#163A70"/>
+</g>
+<text x="990.0" y="349" text-anchor="middle" font-size="16">残り 0%</text>
+<text x="32" y="370" font-size="18" font-weight="600">休憩</text>
+<defs><clipPath id="clip1-0"><rect width="172" height="204" rx="33"/></clipPath></defs>
+<g transform="translate(40,385)" clip-path="url(#clip1-0)">
+<rect width="172" height="204" fill="#F25F5C"/>
+<rect width="172" height="204" fill="#163A70"/>
+</g>
+<text x="126.0" y="615" text-anchor="middle" font-size="16">残り 100%</text>
+<defs><clipPath id="clip1-1"><rect width="172" height="204" rx="33"/></clipPath></defs>
+<g transform="translate(256,385)" clip-path="url(#clip1-1)">
+<rect width="172" height="204" fill="#F25F5C"/>
+<path fill="#163A70" d="M 86.0 102.0 L 220.416641 102.000000 A 134.416641 134.416641 0 1 1 86.000000 -32.416641 Z"/>
+</g>
+<text x="342.0" y="615" text-anchor="middle" font-size="16">残り 75%</text>
+<defs><clipPath id="clip1-2"><rect width="172" height="204" rx="33"/></clipPath></defs>
+<g transform="translate(472,385)" clip-path="url(#clip1-2)">
+<rect width="172" height="204" fill="#F25F5C"/>
+<path fill="#163A70" d="M 86.0 102.0 L 86.000000 236.416641 A 134.416641 134.416641 0 0 1 86.000000 -32.416641 Z"/>
+</g>
+<text x="558.0" y="615" text-anchor="middle" font-size="16">残り 50%</text>
+<defs><clipPath id="clip1-3"><rect width="172" height="204" rx="33"/></clipPath></defs>
+<g transform="translate(688,385)" clip-path="url(#clip1-3)">
+<rect width="172" height="204" fill="#F25F5C"/>
+<path fill="#163A70" d="M 86.0 102.0 L -48.416641 102.000000 A 134.416641 134.416641 0 0 1 86.000000 -32.416641 Z"/>
+</g>
+<text x="774.0" y="615" text-anchor="middle" font-size="16">残り 25%</text>
+<defs><clipPath id="clip1-4"><rect width="172" height="204" rx="33"/></clipPath></defs>
+<g transform="translate(904,385)" clip-path="url(#clip1-4)">
+<rect width="172" height="204" fill="#F25F5C"/>
+</g>
+<text x="990.0" y="615" text-anchor="middle" font-size="16">残り 0%</text>
+<text x="32" y="643" font-size="14">円の中心＝画面の中心。円は画面の外まで広げ、端末の表示領域で切り取ります。</text>
+</g></svg>
