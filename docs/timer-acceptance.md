@@ -65,7 +65,7 @@ Swift Testingで以下の結果を確かめる。同じ仕組みの入力違い�
 
 ## buildと実行コマンド
 
-現時点のprojectにtest targetはない。段階1でwatchOS unit test targetを追加し、共有scheme `mela-watch-timer Watch App`のTest actionへ登録してから以下のtestを実行可能にする。成功を主張する前に、testが0件ではなく上表のケースを実際に走らせたことを確認する。
+watchOS unit test target `TimerTests` を共有scheme `mela-watch-timer Watch App` のTest actionに登録している。以下のコマンドで実行する。成功を主張する前に、testが0件ではなく上表のケースを実際に走らせたことを確認する。
 
 実行前に`DEVELOPER_DIR`を使用する安定版XcodeのDeveloperディレクトリへ設定する。グローバルなxcode-selectは無断変更しない。Simulator起動・GUI操作は[GUI運用](operations.md)の予約と実際の権限に従う。
 
@@ -91,7 +91,7 @@ xcodebuild -project mela-watch-timer.xcodeproj \
   -derivedDataPath .harness-local/DerivedData \
   CODE_SIGNING_ALLOWED=NO build
 
-# test target追加後。実在するSimulator IDと未使用の結果名を指定
+# 実在するSimulator IDと未使用の結果名を指定
 : "${MELA_WATCH_SIMULATOR_ID:?試験に使うwatchOS Simulator IDを設定してください}"
 : "${MELA_RUN_ID:?この試験の一意な結果名を設定してください}"
 xcodebuild -project mela-watch-timer.xcodeproj \

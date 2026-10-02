@@ -162,6 +162,8 @@ actor TestNotifications {
         await f.start()
         let id = try #require(f.model.snapshot.timer.session?.id)
         f.time.advance(1500 + offset)
+        await f.model.send(.refresh(.operation))
+        #expect(f.model.snapshot.timer.mode == (offset < 0 ? .running : .ready))
         await f.model.send(.pause(id))
         if offset < 0 {
             #expect(f.model.snapshot.timer.mode == .paused)
@@ -518,4 +520,92 @@ actor TestNotifications {
         await f.model.notifications.waitForIdle()
         #expect(await f.alerts.ids.isEmpty)
     }
+    @Test func A09_expiredColdRestoreFailureShowsZeroAndRetries() async {
+        let time = TestTime()
+        var snapshot = TimerSnapshot()
+        snapshot.start(at: time.now().wall)
+        time.advance(1501)
+        let f = Fixture(snapshot: snapshot, time: time)
+        await f.store.setFailure(true)
+        await f.load()
+        #expect(f.model.isLoaded)
+        #expect(f.model.completionPending)
+        #expect(f.model.remaining == 0)
+        #expect(f.model.snapshot.focusRecords.isEmpty)
+        await f.store.setFailure(false)
+        await f.model.send(.refresh(.retry))
+        #expect(f.model.snapshot.focusRecords.count == 1)
+        #expect(f.model.snapshot.focusRecords[0].endedAt == snapshot.timer.session?.deadline)
+    }
+
+    @Test func A11_earlyForegroundNotificationReschedulesWithoutCompleting() async throws {
+        let f = Fixture()
+        await f.load()
+        await f.start()
+        let intent = try #require(f.model.snapshot.notificationIntent)
+        f.time.advance(10)
+        let sound = await f.model.send(.foregroundNotification(NotificationPayload(intent: intent)))
+        await f.model.notifications.waitForIdle()
+        #expect(!sound)
+        #expect(f.model.remaining == 1490)
+        #expect(f.model.snapshot.focusRecords.isEmpty)
+        #expect(f.model.snapshot.notificationIntent?.token != intent.token)
+        #expect(await !f.alerts.ids.contains(intent.identifier))
+    }
+
+    @Test func A13_permissionRationaleDoesNotStartClock() async {
+        let alerts = TestNotifications()
+        await alerts.configure(access: NotificationAccess(authorization: .notDetermined, soundEnabled: false))
+        let f = Fixture(alerts: alerts)
+        await f.load()
+        let started = await f.model.send(.start())
+        #expect(!started)
+        #expect(f.model.permissionPrompt == .start)
+        #expect(f.model.snapshot.timer.mode == .ready)
+        f.time.advance(45)
+        await f.model.send(.start(.withoutNotifications))
+        #expect(f.model.remaining == 1500)
+        #expect(!f.model.snapshot.settings.notificationsEnabled)
+        #expect(f.model.snapshot.timer.session?.startedAt == f.time.now().wall)
+    }
+
+    @Test func A16_pendingAddAndSoundOffNeverUseFallback() async throws {
+        for pending in [true, false] {
+            let alerts = TestNotifications()
+            await alerts.configure(access: NotificationAccess(authorization: .allowed, soundEnabled: pending),
+                                   addFails: !pending, holding: pending)
+            let f = Fixture(alerts: alerts)
+            await f.load(active: true)
+            await f.model.send(.start())
+            await alerts.waitForAdd()
+            if !pending { await f.model.notifications.waitForIdle() }
+            let intent = try #require(f.model.snapshot.notificationIntent)
+            f.time.advance(1500)
+            await f.model.send(.refresh(.deadline(intent.sessionID, 1)))
+            #expect(f.haptics.completions == 0)
+            if pending {
+                await alerts.finish(intent.token)
+                await f.model.notifications.waitForIdle()
+            }
+            f.model.setActive(false)
+        }
+    }
+
+    @Test(arguments: [false, true]) func A04_confirmationFromExpiredSessionIsIgnored(switchPhase: Bool) async throws {
+        let f = Fixture()
+        await f.load()
+        await f.start()
+        let capturedSessionID = try #require(f.model.snapshot.timer.session?.id)
+        let intent = f.model.snapshot.notificationIntent
+        f.time.advance(1500)
+        await f.model.send(.refresh(.activation))
+        let completed = f.model.snapshot
+        let discarded = await f.model.send(.discard(capturedSessionID, switchPhase: switchPhase))
+        #expect(!discarded)
+        #expect(f.model.snapshot == completed)
+        #expect(f.model.snapshot.timer.phase == .rest)
+        #expect(f.model.snapshot.notificationIntent == intent)
+        #expect(f.model.snapshot.focusRecords.count == 1)
+    }
+
 }

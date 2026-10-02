@@ -94,7 +94,11 @@ private struct OnboardingView: View {
 
 private struct ControlsView: View {
     let model: TimerModel
-    @State private var discardPhaseSwitch: Bool?
+    private struct DiscardConfirmation {
+        var sessionID: UUID
+        var switchPhase: Bool
+    }
+    @State private var discardConfirmation: DiscardConfirmation?
     @State private var confirmInitialization = false
 
     var body: some View {
@@ -125,13 +129,13 @@ private struct ControlsView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(model.storageError != nil)
+                    .disabled(model.storageError != nil && model.snapshot.timer.mode != .running)
                     if model.snapshot.timer.mode != .ready {
-                        Button("この回をやり直す") { discardPhaseSwitch = false }
+                        Button("この回をやり直す") { confirmDiscard(switchPhase: false) }
                     }
                     Button(model.snapshot.timer.phase.next.label + "に切り替える") {
                         if model.snapshot.timer.mode == .ready { run(.discard(nil, switchPhase: true)) }
-                        else { discardPhaseSwitch = true }
+                        else { confirmDiscard(switchPhase: true) }
                     }
                     Text(model.notifications.message).font(.footnote)
                     if model.startNotice {
@@ -152,13 +156,16 @@ private struct ControlsView: View {
         }
         .navigationTitle("操作")
         .alert("この回の途中経過は記録されません", isPresented: Binding(
-            get: { discardPhaseSwitch != nil }, set: { if !$0 { discardPhaseSwitch = nil } })) {
-                Button("取消", role: .cancel) { discardPhaseSwitch = nil }
-                Button(discardPhaseSwitch == true ? "切り替える" : "やり直す", role: .destructive) {
-                    let switchPhase = discardPhaseSwitch == true
-                    run(.discard(model.snapshot.timer.session?.id, switchPhase: switchPhase))
-                    discardPhaseSwitch = nil
+            get: { discardConfirmation != nil }, set: { if !$0 { discardConfirmation = nil } })) {
+                Button("取消", role: .cancel) { discardConfirmation = nil }
+                Button(discardConfirmation?.switchPhase == true ? "切り替える" : "やり直す", role: .destructive) {
+                    guard let confirmation = discardConfirmation else { return }
+                    run(.discard(confirmation.sessionID, switchPhase: confirmation.switchPhase))
+                    discardConfirmation = nil
                 }
+        }
+        .onChange(of: model.snapshot.timer.session?.id) { _, id in
+            if discardConfirmation?.sessionID != id { discardConfirmation = nil }
         }
         .alert("保存データを初期化しますか", isPresented: $confirmInitialization) {
             Button("取消", role: .cancel) {}
@@ -175,6 +182,10 @@ private struct ControlsView: View {
         }
     }
     private var isNotificationFailed: Bool { if case .failed = model.notifications.state { true } else { false } }
+    private func confirmDiscard(switchPhase: Bool) {
+        guard let id = model.snapshot.timer.session?.id else { return }
+        discardConfirmation = DiscardConfirmation(sessionID: id, switchPhase: switchPhase)
+    }
     private func run(_ command: TimerCommand) { Task { await model.send(command) } }
 }
 
