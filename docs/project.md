@@ -1,6 +1,6 @@
 # プロジェクト情報
 
-仕様と開発上の注意の正本は [CLAUDE.md](../CLAUDE.md) です。AGENTS.mdはそのsymlinkで、同じ共通契約を読み込みます。
+再構築の正本は[プロダクト要件](requirements.md)、[技術設計](timer-design.md)、[受入条件と実装順序](timer-acceptance.md)です。新仕様は未実装で、下表は現行コードの情報です。現行実装と開発上の注意は[CLAUDE.md](../CLAUDE.md)を参照します。AGENTS.mdはそのsymlinkで、同じ共通契約を読み込みます。
 
 | 項目 | 現在の値 |
 | --- | --- |

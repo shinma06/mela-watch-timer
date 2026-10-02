@@ -1,8 +1,11 @@
 # mela-watch-timer
 
-[minee 4](https://mineetimer.com/ja/products/minee-4)の体験をApple Watchで模倣するプロジェクトです。現在は25分の集中と5分の休憩を切り替えるタイマーを実装しています。目的と参照製品のナレッジは[CLAUDE.md](CLAUDE.md#目的と参照製品)にまとめています。
+[minee 4](https://mineetimer.com/ja/products/minee-4)の体験をApple Watchで模倣するプロジェクトです。現在は25分の集中と5分の休憩を切り替えるタイマーを実装しています。全画面を赤と青だけで表す新しいタイマーへ再構築する仕様を定義しています。新仕様は未実装です。
 
-- [仕様・開発上の注意](CLAUDE.md)
+- [再構築のプロダクト要件と画面仕様](docs/requirements.md)
+- [タイマー・通知・保存の技術設計](docs/timer-design.md)
+- [受入条件と実装順序](docs/timer-acceptance.md)
+- [現行実装・目的・開発上の注意](CLAUDE.md)
 - [構成・ビルド・検証](docs/project.md)
 - [開発フロー](docs/workflow.md)
 - [ハーネスの導入元・更新・戻し方](docs/adoption.md)
