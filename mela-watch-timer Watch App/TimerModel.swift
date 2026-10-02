@@ -27,6 +27,7 @@ final class TimerModel {
     private(set) var isBusy = false
     private(set) var isActive = false
     private(set) var route: AppRoute = .controls
+    private(set) var navigationResetID = UUID()
     private(set) var storageError: String?
     private(set) var completionPending = false
     private(set) var permissionPrompt: PendingPermission?
@@ -76,6 +77,7 @@ final class TimerModel {
         completionTask?.cancel()
         completionTask = nil
         if active {
+            if returningFromBackground { navigationResetID = UUID() }
             routeOnActivation = routeOnActivation || returningFromBackground
             Task { [weak self] in await self?.send(.refresh(.activation)) }
         }
@@ -83,7 +85,11 @@ final class TimerModel {
 
     func openControls() { cancelAutomaticDismissal(); route = isLoaded && !snapshot.settings.onboardingCompleted ? .onboarding : .controls }
     func closeControls() { route = .dial; startNotice = false }
-    func showOnboarding() { cancelAutomaticDismissal(); route = .onboarding }
+    func showOnboarding() {
+        cancelAutomaticDismissal()
+        route = .onboarding
+        navigationResetID = UUID()
+    }
     func cancelAutomaticDismissal() { startPresentationTask?.cancel() }
     func cancelPermissionPrompt() { permissionPrompt = nil }
 

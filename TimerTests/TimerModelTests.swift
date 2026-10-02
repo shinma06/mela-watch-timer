@@ -626,4 +626,68 @@ actor TestNotifications {
         #expect(f.model.route == .controls)
     }
 
+    @Test(arguments: [false, true]) func A07_backgroundReturnResetsNavigationWithoutChangingTimer(paused: Bool) async throws {
+        var snapshot = TimerSnapshot()
+        snapshot.settings.onboardingCompleted = true
+        snapshot.timer.phase = .rest
+        let f = Fixture(snapshot: snapshot)
+        await f.load(active: true)
+        defer { f.model.setActive(false) }
+        if paused {
+            await f.start()
+            f.time.advance(5)
+            await f.model.send(.pause(try #require(f.model.snapshot.timer.session?.id)))
+        }
+        f.model.openControls()
+        let navigationID = f.model.navigationResetID
+        let before = f.model.snapshot
+        let remaining = f.model.remaining
+        f.model.setActive(false)
+        f.time.advance(120)
+        f.model.setActive(true, returningFromBackground: true)
+        await f.model.send(.refresh(.activation))
+        #expect(f.model.route == .controls)
+        #expect(f.model.navigationResetID != navigationID)
+        #expect(f.model.snapshot == before)
+        #expect(f.model.remaining == remaining)
+    }
+
+    @Test func A07_inactiveReturnAndForegroundCompletionPreserveNavigation() async throws {
+        var snapshot = TimerSnapshot()
+        snapshot.settings.onboardingCompleted = true
+        let f = Fixture(snapshot: snapshot)
+        await f.load(active: true)
+        defer { f.model.setActive(false) }
+        await f.start()
+        f.model.openControls()
+        let navigationID = f.model.navigationResetID
+        let sessionID = try #require(f.model.snapshot.timer.session?.id)
+        f.model.setActive(false)
+        f.time.advance(10)
+        f.model.setActive(true)
+        await f.model.send(.refresh(.activation))
+        #expect(f.model.navigationResetID == navigationID)
+        #expect(f.model.route == .controls)
+        f.time.advance(f.model.remaining)
+        await f.model.send(.refresh(.deadline(sessionID, 3)))
+        #expect(f.model.snapshot.timer.mode == .ready)
+        #expect(f.model.navigationResetID == navigationID)
+        #expect(f.model.route == .controls)
+    }
+
+    @Test func A07_helpReplacesNavigationRoot() async {
+        var snapshot = TimerSnapshot()
+        snapshot.settings.onboardingCompleted = true
+        let f = Fixture(snapshot: snapshot)
+        await f.load()
+        let navigationID = f.model.navigationResetID
+        f.model.showOnboarding()
+        #expect(f.model.route == .onboarding)
+        #expect(f.model.navigationResetID != navigationID)
+        #expect(f.model.snapshot == snapshot)
+        await f.model.send(.finishOnboarding)
+        #expect(f.model.route == .controls)
+        #expect(f.model.snapshot == snapshot)
+    }
+
 }

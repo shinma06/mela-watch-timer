@@ -23,6 +23,7 @@ struct ContentView: View {
                 if model.route == .onboarding { OnboardingView(model: model) }
                 else { ControlsView(model: model) }
             }
+            .id(model.navigationResetID)
             .alert("終了のお知らせ", isPresented: Binding(get: { model.permissionPrompt != nil }, set: { _ in })) {
                 Button("通知を使う") { model.answerPermission(.allow) }
                 Button("今は使わない") { model.answerPermission(.withoutNotifications) }
